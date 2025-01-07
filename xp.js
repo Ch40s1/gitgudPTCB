@@ -61,7 +61,12 @@ function addXP(amount) {
 }
 
 function removeXP(amount) {
-  userXP -= amount;
+  if (userXP - amount < 0) {
+    userXP = 0;
+  }
+  else {
+    userXP -= amount;
+  }
   saveProgress();
   updateXPBar();
 }
