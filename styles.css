@@ -1,6 +1,6 @@
-html{
+/* html{
   margin: 20px;
-}
+} */
 
 :root {
   /* Catppuccin Colors */
@@ -29,6 +29,10 @@ body {
   font-family: var(--font-family);
   background-color: var(--background);
   color: var(--white);
+}
+
+#game-container {
+  padding: 40px;
 }
 
 .title {
