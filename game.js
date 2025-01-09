@@ -1,36 +1,28 @@
 import levels from "./levelsDB.js";
-import { addXP,removeXP, initializeXPBar } from "./xp.js";
-
+import { addXP, removeXP, initializeXPBar } from "./xp.js";
 
 let completedCategories = JSON.parse(localStorage.getItem("completedCategories")) || [];
-let currentCategoryIndex = 0;
+let currentCategoryIndex = JSON.parse(localStorage.getItem("currentCategoryIndex")) || 0;
 let currentClassIndex = 0;
-
-function saveCompletedCategory(category) {
-  if (!completedCategories.includes(category)) {
-    completedCategories.push(category);
-    localStorage.setItem("completedCategories", JSON.stringify(completedCategories));
-  }
-}
-
-function resetGame() {
-  currentCategoryIndex = 0;
-  currentClassIndex = 0;
-  alert("Wrong answer! Game restarting...");
-  loadCategory(currentCategoryIndex);
-}
+let userCheckpoint = JSON.parse(localStorage.getItem("userCheckpoint")) || 0;
 
 function loadHomePage() {
   const container = document.getElementById("game-container");
   container.innerHTML = `
     <h1 class="title">Welcome to my gitgudPTCB study guide</h1>
-    <p class="quiz-passage">Finish quiz if you can lol</p>
+    <p class="quiz-passage">Finish the quiz if you can! This is for mobile. :(</p>
     <h3 class="subtitle">Completed Categories:</h3>
     <ul class="achievement-list">
       ${
         completedCategories.length
-          ? completedCategories.map(cat => `<li class="achievement-item">${cat}</li>`).join("")
-          : "<li class='achievement-item'>No categories completed yet lol!!!!</li>"
+          ? completedCategories.map(
+              (cat, index) => `
+                <li class="achievement-item">
+                  ${cat}
+                  <button class="replay-btn" data-index="${index}">Replay</button>
+                </li>`
+            ).join("")
+          : "<li class='achievement-item'>No categories completed yet!</li>"
       }
     </ul>
     <button id="start-btn" class="button-primary">Start Quiz</button>
@@ -41,8 +33,14 @@ function loadHomePage() {
   document.getElementById("start-btn").addEventListener("click", () => {
     loadCategory(currentCategoryIndex);
   });
-}
 
+  document.querySelectorAll(".replay-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const index = parseInt(event.target.dataset.index, 10);
+      replayCategory(index);
+    });
+  });
+}
 
 function loadCategory(categoryIndex) {
   const category = levels[categoryIndex];
@@ -56,21 +54,30 @@ function loadCategory(categoryIndex) {
     return;
   }
 
+  // Ensure progress resumes from userCheckpoint
+  if (userCheckpoint > currentCategoryIndex) {
+    currentCategoryIndex = userCheckpoint;
+    currentClassIndex = 0;
+    loadClass(currentCategoryIndex, currentClassIndex);
+    return;
+  }
+
   currentClassIndex = 0; // Reset class index for the new category
-  loadClass(currentCategoryIndex, currentClassIndex);
+  loadClass(categoryIndex, currentClassIndex);
 }
 
 function loadClass(categoryIndex, classIndex) {
   const category = levels[categoryIndex];
   const drugClass = category.classes[classIndex];
   if (!drugClass) {
-    // Category completed
+    // Mark category as completed
     saveCompletedCategory(category.category);
     document.getElementById("game-container").innerHTML = `
       <h2>Congratulations! You've completed ${category.category}!</h2>
       <p>Returning to the home page...</p>
     `;
-    currentCategoryIndex++;
+    userCheckpoint = currentCategoryIndex + 1; // Move checkpoint to the next category
+    saveUserCheckpoint();
     setTimeout(loadHomePage, 3000); // Move to the home page after 3 seconds
     return;
   }
@@ -113,10 +120,10 @@ function checkBrandAnswers(drugs) {
   });
 
   if (allCorrect) {
-    addXP(10); // Add 100 XP for each correct answer
+    addXP(50); // Add XP for correct answers
     loadGenericChallenge();
   } else {
-    removeXP(8); // Remove 100 XP for each wrong answer
+    removeXP(28); // Deduct XP for incorrect answers
     resetGame();
   }
 }
@@ -145,10 +152,6 @@ function loadGenericChallenge() {
   });
 }
 
-function exitGame() {
-  loadHomePage();
-}
-
 function checkGenericAnswers(drugs) {
   let allCorrect = true;
 
@@ -167,6 +170,46 @@ function checkGenericAnswers(drugs) {
     loadClass(currentCategoryIndex, currentClassIndex);
   } else {
     resetGame(); // Restart the game on a wrong answer
+  }
+}
+
+function exitGame() {
+  loadHomePage();
+}
+
+function saveCompletedCategory(category) {
+  if (!completedCategories.includes(category)) {
+    completedCategories.push(category);
+    localStorage.setItem("completedCategories", JSON.stringify(completedCategories));
+  }
+}
+
+function saveUserCheckpoint() {
+  localStorage.setItem("userCheckpoint", JSON.stringify(userCheckpoint));
+  localStorage.setItem("currentCategoryIndex", JSON.stringify(currentCategoryIndex));
+}
+
+function resetGame() {
+  currentCategoryIndex = 0;
+  currentClassIndex = 0;
+  userCheckpoint = 0;
+  saveUserCheckpoint();
+  alert("Wrong answer! Game restarting...");
+  loadCategory(currentCategoryIndex);
+}
+
+function replayCategory(categoryIndex) {
+  if (completedCategories[categoryIndex]) {
+    const categoryName = completedCategories[categoryIndex];
+    const category = levels.find(level => level.category === categoryName);
+
+    if (category) {
+      currentCategoryIndex = levels.indexOf(category); // Set the category index
+      currentClassIndex = 0; // Reset class index
+      loadClass(currentCategoryIndex, currentClassIndex);
+    } else {
+      alert("Category data not found!");
+    }
   }
 }
 
